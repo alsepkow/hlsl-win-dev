@@ -48,6 +48,7 @@ $VSComponents = @(
     "Microsoft.VisualStudio.Component.VC.Llvm.Clang",             # C++ Clang tools for Windows
     "Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset",      # MSBuild support for LLVM (clang-cl) toolset
     "Microsoft.VisualStudio.Component.Windows11SDK.26100",         # Windows 11 SDK (10.0.26100)
+    "Microsoft.VisualStudio.Workload.Universal",                    # Universal Windows Platform Development
     "Component.Microsoft.Windows.DriverKit"                        # Windows Driver Kit (includes TAEF)
 )
 

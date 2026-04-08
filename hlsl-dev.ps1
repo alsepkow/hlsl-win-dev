@@ -27,7 +27,7 @@
     Valid: Ninja, VS2026, VS2022, VS2019
 
 .PARAMETER Compiler
-    C/C++ compiler to use. Defaults to clang-cl.
+    C/C++ compiler to use. Defaults to cl.
     Valid: clang-cl, cl
 
 .PARAMETER Repo
@@ -66,7 +66,7 @@ param(
     [string]$Generator = "Ninja",
 
     [ValidateSet("clang-cl", "cl")]
-    [string]$Compiler = "clang-cl",
+    [string]$Compiler = "cl",
 
     [ValidateSet("", "llvm-project", "DirectXShaderCompiler", "offload-test-suite", "offload-golden-images")]
     [string]$Repo = ""
@@ -581,7 +581,7 @@ Commands:
 Parameters:
   -BuildType          Debug | Release | RelWithDebInfo (default) | MinSizeRel
   -Generator          Ninja (default) | VS2026 | VS2022 | VS2019
-  -Compiler           clang-cl (default) | cl
+  -Compiler           cl (default) | clang-cl
   -Target             Specific build target (e.g., clang, dxc, check-all)
   -Repo               Submodule name (for fetch-history / truncate-history)
 
