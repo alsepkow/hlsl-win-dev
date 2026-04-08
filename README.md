@@ -6,6 +6,11 @@ Uses PowerShell and Visual Studio instead of Nix.
 
 ## Prerequisites
 
+- **PowerShell 7** (`winget install Microsoft.PowerShell`) -- the scripts require PowerShell 7 and are not compatible with Windows PowerShell 5.1
+  - Your execution policy must allow running scripts. If it doesn't, set it with:
+    ```powershell
+    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+    ```
 - **Visual Studio 2026** (or 2022/2019) with workloads:
   - Desktop Development with C++
 - **Windows SDK** >= 10.0.26100.0
@@ -17,6 +22,8 @@ Uses PowerShell and Visual Studio instead of Nix.
 
 Optional:
 - **sccache** (`winget install Mozilla.sccache`) -- compiler caching for faster rebuilds
+
+You can install all of the above automatically by running `.\install-deps.ps1` in an **administrator** PowerShell.
 
 Run `.\hlsl-dev.ps1 check-prereqs` to verify your setup.
 
