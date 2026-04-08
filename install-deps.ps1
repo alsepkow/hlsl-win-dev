@@ -27,9 +27,9 @@ param()
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Verify winget is available
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 $winget = Get-Command winget -ErrorAction SilentlyContinue
 if (-not $winget) {
     throw "winget is not available. Install App Installer from the Microsoft Store or update Windows."
@@ -38,9 +38,9 @@ if (-not $winget) {
 $wingetVer = (& winget --version 2>&1)
 Write-Host "Using winget $wingetVer" -ForegroundColor Cyan
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Package list
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Visual Studio workloads and individual components to install via setup.exe modify.
 $VSComponents = @(
     "Microsoft.VisualStudio.Workload.NativeDesktop",              # Desktop Development with C++ (includes MSVC)
@@ -58,19 +58,19 @@ $Packages = @(
     @{ Id = "Mozilla.sccache";                       Name = "sccache" }
 )
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Install each package
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 Write-Host "`n=== Installing HLSL Dev Dependencies ===" -ForegroundColor Cyan
 
 $Failed = @()
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Visual Studio 2026 Community (with required workloads and components)
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 Write-Host "`n--- Visual Studio 2026 Community (with workloads) ---" -ForegroundColor Cyan
 
-# Step 1: Ensure VS Community is installed (no component overrides — let
+# Step 1: Ensure VS Community is installed (no component overrides -- let
 #          winget handle the base install cleanly).
 $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
 $vsSetup = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\setup.exe"
@@ -85,7 +85,7 @@ if (-not $vsInstallPath) {
     & winget install --id Microsoft.VisualStudio.Community --scope machine `
         --accept-source-agreements --accept-package-agreements
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "  [FAILED] Visual Studio 2026 Community — winget exited with code $LASTEXITCODE" -ForegroundColor Red
+        Write-Host "  [FAILED] Visual Studio 2026 Community -- winget exited with code $LASTEXITCODE" -ForegroundColor Red
         $Failed += "Visual Studio 2026 Community"
     }
 
@@ -123,13 +123,13 @@ elseif (-not $vsInstallPath) {
     $Failed += "Visual Studio 2026 Community"
 }
 else {
-    Write-Host "  [FAILED] VS Installer (setup.exe) not found — cannot add components" -ForegroundColor Red
+    Write-Host "  [FAILED] VS Installer (setup.exe) not found -- cannot add components" -ForegroundColor Red
     $Failed += "Visual Studio 2026 Community (components)"
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Remaining packages (simple winget installs)
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 foreach ($pkg in $Packages) {
     Write-Host "`n--- $($pkg.Name) ($($pkg.Id)) ---" -ForegroundColor Cyan
 
@@ -145,7 +145,7 @@ foreach ($pkg in $Packages) {
     & winget install --id $pkg.Id --scope machine --accept-source-agreements --accept-package-agreements
 
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "  [FAILED] $($pkg.Name) — winget exited with code $LASTEXITCODE" -ForegroundColor Red
+        Write-Host "  [FAILED] $($pkg.Name) -- winget exited with code $LASTEXITCODE" -ForegroundColor Red
         $Failed += $pkg.Name
     }
     else {
@@ -153,25 +153,25 @@ foreach ($pkg in $Packages) {
     }
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Refresh PATH from the registry so newly-installed tools are visible
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 Write-Host "`nRefreshing PATH from registry..." -ForegroundColor DarkGray
 
 $MachinePath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
 $UserPath    = [System.Environment]::GetEnvironmentVariable("Path", "User")
 $env:Path    = "$MachinePath;$UserPath"
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Post-install: pyyaml (needed by LLVM LIT tests)
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 Write-Host "`n--- pyyaml (pip) ---" -ForegroundColor Cyan
 
 $python = Get-Command python -ErrorAction SilentlyContinue
 if ($python) {
     & python -m pip install pyyaml
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "  [FAILED] pyyaml — pip exited with code $LASTEXITCODE" -ForegroundColor Red
+        Write-Host "  [FAILED] pyyaml -- pip exited with code $LASTEXITCODE" -ForegroundColor Red
         $Failed += "pyyaml"
     }
     else {
@@ -179,12 +179,12 @@ if ($python) {
     }
 }
 else {
-    Write-Host "  [SKIPPED] Python not yet on PATH — restart your terminal, then run: pip install pyyaml" -ForegroundColor Yellow
+    Write-Host "  [SKIPPED] Python not yet on PATH -- restart your terminal, then run: pip install pyyaml" -ForegroundColor Yellow
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Post-install: Graphics Tools optional Windows feature
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 Write-Host "`n--- Graphics Tools (Windows optional feature) ---" -ForegroundColor Cyan
 
 $d3d12LayersDll = Join-Path $env:SystemRoot "System32\d3d12SDKLayers.dll"
@@ -194,7 +194,7 @@ if (Test-Path $d3d12LayersDll) {
 else {
     & dism /Online /Add-Capability /CapabilityName:Tools.Graphics.DirectX~~~~0.0.1.0 /NoRestart
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "  [FAILED] Graphics Tools — dism exited with code $LASTEXITCODE" -ForegroundColor Red
+        Write-Host "  [FAILED] Graphics Tools -- dism exited with code $LASTEXITCODE" -ForegroundColor Red
         $Failed += "Graphics Tools"
     }
     else {
@@ -202,9 +202,9 @@ else {
     }
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Summary
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 Write-Host "`n=== Summary ===" -ForegroundColor Cyan
 
 if ($Failed.Count -eq 0) {

@@ -75,18 +75,18 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Project Paths (relative to this script's location)
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $LLVMDir   = Join-Path $ScriptDir "llvm-project"
 $DXCDir    = Join-Path $ScriptDir "DirectXShaderCompiler"
 $OffloadTestDir   = Join-Path $ScriptDir "offload-test-suite"
 $GoldenImagesDir  = Join-Path $ScriptDir "offload-golden-images"
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Generator Mapping
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 function Get-CMakeGenerator {
     switch ($Generator) {
         "Ninja"  { return "Ninja" }
@@ -100,9 +100,9 @@ function Test-IsMultiConfigGenerator {
     return $Generator -like "VS*"
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Compiler Selection
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 function Get-CompilerCMakeFlags {
     <#
     .SYNOPSIS
@@ -137,9 +137,9 @@ function Get-CompilerCMakeFlags {
     }
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # CMake Flag Definitions
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 function Get-LLVMCMakeFlags {
     $flags = @(
         "-C", (Join-Path $LLVMDir "clang\cmake\caches\HLSL.cmake"),
@@ -178,9 +178,9 @@ function Get-DXCCMakeFlags {
     )
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Required Visual Studio Components
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Each entry maps a vswhere-queryable component ID to a human-readable name.
 # These must stay in sync with $VSComponents in install-deps.ps1.
 $RequiredVSComponents = @(
@@ -192,9 +192,9 @@ $RequiredVSComponents = @(
     @{ Id = "Component.Microsoft.Windows.DriverKit";                Name = "Windows Driver Kit" }
 )
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Prerequisite Checking
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 function Test-Prerequisites {
     Write-Host "`n=== Checking Prerequisites ===" -ForegroundColor Cyan
 
@@ -347,9 +347,9 @@ function Test-Prerequisites {
     Write-Host ""
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Submodule Management (mirrors mask setup / update-submodules / fetch-history)
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 function Invoke-Setup {
     Write-Host "`n=== Initializing Submodules (shallow, depth 2) ===" -ForegroundColor Cyan
     Push-Location $ScriptDir
@@ -394,7 +394,7 @@ function Invoke-FetchHistory {
     try {
         & git fetch --unshallow 2>$null
         if ($LASTEXITCODE -ne 0) {
-            # Already unshallowed or other issue — fall back to a normal fetch
+            # Already unshallowed or other issue -- fall back to a normal fetch
             & git fetch --all
             if ($LASTEXITCODE -ne 0) { throw "git fetch --all failed for $RepoName" }
         }
@@ -435,9 +435,9 @@ function Invoke-TruncateHistory {
     }
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Configure & Build: LLVM
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 function Invoke-ConfigureLLVM {
     $sourceDir = Join-Path $LLVMDir "llvm"
     $buildDir  = Join-Path $LLVMDir "build"
@@ -496,9 +496,9 @@ function Invoke-BuildLLVM {
     Write-Host "LLVM build succeeded." -ForegroundColor Green
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Configure & Build: DXC
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 function Invoke-ConfigureDXC {
     if (-not (Test-Path $DXCDir)) {
         Write-Host "Error: DXC source not found at $DXCDir. Run '.\hlsl-dev.ps1 setup' first." -ForegroundColor Red
@@ -556,9 +556,9 @@ function Invoke-BuildDXC {
     Write-Host "DXC build succeeded." -ForegroundColor Green
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Help
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 function Show-Help {
     Write-Host @"
 
@@ -612,9 +612,9 @@ Note: For Ninja builds, run this from a Visual Studio Developer PowerShell
 "@ -ForegroundColor White
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Main Dispatch
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 switch ($Command) {
     "check-prereqs"     { Test-Prerequisites }
     "setup"             { Invoke-Setup }
