@@ -100,18 +100,18 @@ if ($vsInstallPath -and (Test-Path $vsSetup)) {
     Write-Host "  Adding components to $vsInstallPath ..." -ForegroundColor DarkGray
     Write-Host "  Components: $($VSComponents -join ', ')" -ForegroundColor DarkGray
 
-    $modifyArgs = @("modify", "--installPath", $vsInstallPath)
+    $modifyArgs = @("modify", "--installPath", "`"$vsInstallPath`"")
     foreach ($comp in $VSComponents) {
         $modifyArgs += "--add"
         $modifyArgs += $comp
     }
     $modifyArgs += "--passive"
-    $modifyArgs += "--wait"
+    $modifyArgStr = $modifyArgs -join " "
 
-    Write-Host "  $vsSetup $($modifyArgs -join ' ')" -ForegroundColor DarkGray
-    & $vsSetup @modifyArgs
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "  [FAILED] VS Installer modify exited with code $LASTEXITCODE" -ForegroundColor Red
+    Write-Host "  $vsSetup $modifyArgStr" -ForegroundColor DarkGray
+    $proc = Start-Process -FilePath $vsSetup -ArgumentList $modifyArgStr -Wait -PassThru
+    if ($proc.ExitCode -ne 0) {
+        Write-Host "  [FAILED] VS Installer modify exited with code $($proc.ExitCode)" -ForegroundColor Red
         $Failed += "Visual Studio 2026 Community (components)"
     }
     else {
