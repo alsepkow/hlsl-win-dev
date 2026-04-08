@@ -6,24 +6,26 @@ Uses PowerShell and Visual Studio instead of Nix.
 
 ## Prerequisites
 
-- **PowerShell 7** (`winget install Microsoft.PowerShell`) -- the scripts require PowerShell 7 and are not compatible with Windows PowerShell 5.1
+- **PowerShell 7** (`winget install Microsoft.PowerShell`) -- the scripts require PowerShell 7 and are not compatible with Windows PowerShell 5.1. This must be installed manually before running `install-deps.ps1`.
   - Your execution policy must allow running scripts. If it doesn't, set it with:
     ```powershell
     Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
     ```
-- **Visual Studio 2026** (or 2022/2019) with workloads:
-  - Desktop Development with C++
-- **Windows SDK** >= 10.0.26100.0
-- **Windows Driver Kit (WDK)** -- same version as SDK (for TAEF tests)
+- **Visual Studio 2026** (or 2022/2019) with the following workloads and components:
+  - Desktop Development with C++ (`Microsoft.VisualStudio.Workload.NativeDesktop`)
+  - C++ CMake tools for Windows (`Microsoft.VisualStudio.Component.VC.CMake.Project`) -- provides CMake and Ninja
+  - C++ Clang tools for Windows (`Microsoft.VisualStudio.Component.VC.Llvm.Clang`) -- provides clang-cl
+  - C++ Clang-cl MSBuild toolset (`Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset`)
+  - Windows 11 SDK 10.0.26100 (`Microsoft.VisualStudio.Component.Windows11SDK.26100`)
+  - Windows Driver Kit (`Component.Microsoft.Windows.DriverKit`) -- includes TAEF for DXC tests
 - **Python 3.x** (`pip install pyyaml` for LIT tests)
 - **Git**
-- **CMake** >= 3.17.2 (bundled with VS works)
-- **Ninja** (`winget install Ninja-build.Ninja`)
+- **Vulkan SDK** (<https://vulkan.lunarg.com/sdk/home>)
 
 Optional:
 - **sccache** (`winget install Mozilla.sccache`) -- compiler caching for faster rebuilds
 
-You can install all of the above automatically by running `.\install-deps.ps1` in an **administrator** PowerShell.
+You can install everything except PowerShell 7 automatically by running `.\install-deps.ps1` in an **administrator** PowerShell 7 session.
 
 Run `.\hlsl-dev.ps1 check-prereqs` to verify your setup.
 

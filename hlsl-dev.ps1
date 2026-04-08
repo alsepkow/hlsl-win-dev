@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+#Requires -Version 7.0
 <#
 .SYNOPSIS
     HLSL Developer Environment for Windows - mirrors the Nix-based hlsl-dev setup.
@@ -179,6 +179,20 @@ function Get-DXCCMakeFlags {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Required Visual Studio Components
+# ─────────────────────────────────────────────────────────────────────────────
+# Each entry maps a vswhere-queryable component ID to a human-readable name.
+# These must stay in sync with $VSComponents in install-deps.ps1.
+$RequiredVSComponents = @(
+    @{ Id = "Microsoft.VisualStudio.Component.VC.Tools.x86.x64";   Name = "MSVC x86/x64 build tools" },
+    @{ Id = "Microsoft.VisualStudio.Component.VC.CMake.Project";    Name = "C++ CMake tools for Windows" },
+    @{ Id = "Microsoft.VisualStudio.Component.VC.Llvm.Clang";      Name = "C++ Clang tools for Windows" },
+    @{ Id = "Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset"; Name = "C++ Clang-cl MSBuild toolset" },
+    @{ Id = "Microsoft.VisualStudio.Component.Windows11SDK.26100";  Name = "Windows 11 SDK (10.0.26100)" },
+    @{ Id = "Component.Microsoft.Windows.DriverKit";                Name = "Windows Driver Kit" }
+)
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Prerequisite Checking
 # ─────────────────────────────────────────────────────────────────────────────
 function Test-Prerequisites {
@@ -204,7 +218,7 @@ function Test-Prerequisites {
         Write-Host "  [OK] $cmakeVer" -ForegroundColor Green
     }
     else {
-        Write-Host "  [MISSING] cmake >= 3.17.2 - bundled with Visual Studio or https://cmake.org/download/" -ForegroundColor Red
+        Write-Host "  [MISSING] cmake >= 3.17.2 - run from a VS Developer PowerShell, or install the C++ CMake tools VS component" -ForegroundColor Red
         $allGood = $false
     }
 
@@ -215,7 +229,7 @@ function Test-Prerequisites {
         Write-Host "  [OK] ninja $ninjaVer" -ForegroundColor Green
     }
     else {
-        Write-Host "  [MISSING] ninja - install with: winget install Ninja-build.Ninja" -ForegroundColor Red
+        Write-Host "  [MISSING] ninja - run from a VS Developer PowerShell, or install the C++ CMake tools VS component" -ForegroundColor Red
         $allGood = $false
     }
 
@@ -239,36 +253,37 @@ function Test-Prerequisites {
         $allGood = $false
     }
 
-    # Visual Studio / MSVC
+    # Visual Studio and required components
     $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
     if (Test-Path $vswhere) {
-        $vsInstalls = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property displayName
-        if ($vsInstalls) {
-            Write-Host "  [OK] $vsInstalls" -ForegroundColor Green
+        # Check for any VS install with the base C++ workload
+        $vsDisplayName = & $vswhere -latest -products * `
+            -requires Microsoft.VisualStudio.Workload.NativeDesktop `
+            -property displayName
+        if ($vsDisplayName) {
+            Write-Host "  [OK] $vsDisplayName" -ForegroundColor Green
         }
         else {
             Write-Host "  [MISSING] Visual Studio with 'Desktop Development with C++' workload" -ForegroundColor Red
             $allGood = $false
         }
+
+        # Check each required component individually
+        foreach ($comp in $RequiredVSComponents) {
+            $found = & $vswhere -latest -products * `
+                -requires $comp.Id `
+                -property installationPath
+            if ($found) {
+                Write-Host "  [OK] VS component: $($comp.Name)" -ForegroundColor Green
+            }
+            else {
+                Write-Host "  [MISSING] VS component: $($comp.Name) ($($comp.Id))" -ForegroundColor Red
+                $allGood = $false
+            }
+        }
     }
     else {
         Write-Host "  [MISSING] Visual Studio - https://visualstudio.microsoft.com/downloads/" -ForegroundColor Red
-        $allGood = $false
-    }
-
-    # Windows SDK
-    $sdkKey = "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Microsoft SDKs\Windows\v10.0"
-    if (Test-Path $sdkKey) {
-        $sdkVer = (Get-ItemProperty $sdkKey -ErrorAction SilentlyContinue).ProductVersion
-        if ($sdkVer) {
-            Write-Host "  [OK] Windows SDK $sdkVer" -ForegroundColor Green
-        }
-        else {
-            Write-Host "  [WARN] Windows SDK installed but could not determine version" -ForegroundColor Yellow
-        }
-    }
-    else {
-        Write-Host "  [MISSING] Windows 10 SDK >= 10.0.26100.0" -ForegroundColor Red
         $allGood = $false
     }
 
@@ -281,31 +296,6 @@ function Test-Prerequisites {
         Write-Host "  [MISSING] Graphics Tools optional feature (D3D12 debug layer)" -ForegroundColor Red
         Write-Host "            Enable via: Settings > System > Optional Features > Graphics Tools" -ForegroundColor Red
         Write-Host "            Or run (admin): Add-WindowsCapability -Online -Name Tools.Graphics.DirectX~~~~0.0.1.0" -ForegroundColor Red
-        $allGood = $false
-    }
-
-    # Windows Driver Kit / TAEF (needed for DXC TAEF-based tests)
-    $wdkRoot = $null
-    $wdkRegKey = "HKLM:\SOFTWARE\Microsoft\Windows Kits\Installed Roots"
-    if (Test-Path $wdkRegKey) {
-        $wdkRoot = (Get-ItemProperty $wdkRegKey -ErrorAction SilentlyContinue).KitsRoot10
-    }
-    if ($wdkRoot) {
-        # Look for Te.exe under the TAEF runtime directory
-        $taefDir = Join-Path $wdkRoot "Testing\Runtimes\TAEF"
-        $teExe = Get-ChildItem -Path $taefDir -Filter "Te.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-        if ($teExe) {
-            Write-Host "  [OK] Windows Driver Kit (TAEF at $($teExe.DirectoryName))" -ForegroundColor Green
-        }
-        else {
-            Write-Host "  [WARN] WDK installed at $wdkRoot but TAEF Te.exe not found" -ForegroundColor Yellow
-            Write-Host "         Reinstall WDK with testing tools, or see:" -ForegroundColor Yellow
-            Write-Host "         https://learn.microsoft.com/en-us/windows-hardware/drivers/download-the-wdk" -ForegroundColor Yellow
-        }
-    }
-    else {
-        Write-Host "  [MISSING] Windows Driver Kit (needed for TAEF tests)" -ForegroundColor Red
-        Write-Host "            https://learn.microsoft.com/en-us/windows-hardware/drivers/download-the-wdk" -ForegroundColor Red
         $allGood = $false
     }
 
