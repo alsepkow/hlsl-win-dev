@@ -41,10 +41,10 @@ Write-Host "Using winget $wingetVer" -ForegroundColor Cyan
 # ─────────────────────────────────────────────────────────────────────────────
 # Package list
 # ─────────────────────────────────────────────────────────────────────────────
-# Visual Studio workloads and individual components to install via --override.
-# These are passed directly to the VS Installer (vs_community.exe) as --add flags.
+# Visual Studio workloads and individual components to install via setup.exe modify.
 $VSComponents = @(
-    "Microsoft.VisualStudio.Workload.NativeDesktop",              # Desktop Development with C++ (includes MSVC, CMake, etc.)
+    "Microsoft.VisualStudio.Workload.NativeDesktop",              # Desktop Development with C++ (includes MSVC)
+    "Microsoft.VisualStudio.Component.VC.CMake.Project",          # C++ CMake tools for Windows (CMake, Ninja)
     "Microsoft.VisualStudio.Component.VC.Llvm.Clang",             # C++ Clang tools for Windows
     "Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset",      # MSBuild support for LLVM (clang-cl) toolset
     "Microsoft.VisualStudio.Component.Windows11SDK.26100",         # Windows 11 SDK (10.0.26100)
@@ -106,6 +106,7 @@ if ($vsInstallPath -and (Test-Path $vsSetup)) {
         $modifyArgs += $comp
     }
     $modifyArgs += "--passive"
+    $modifyArgs += "--wait"
 
     Write-Host "  $vsSetup $($modifyArgs -join ' ')" -ForegroundColor DarkGray
     & $vsSetup @modifyArgs
@@ -133,7 +134,12 @@ foreach ($pkg in $Packages) {
     Write-Host "`n--- $($pkg.Name) ($($pkg.Id)) ---" -ForegroundColor Cyan
 
     & winget install --id $pkg.Id --scope machine --accept-source-agreements --accept-package-agreements
-    if ($LASTEXITCODE -ne 0) {
+
+    # Exit code -1978335189 (0x8A15002B) = no upgrade available / already installed
+    if ($LASTEXITCODE -eq -1978335189) {
+        Write-Host "  [OK] $($pkg.Name) (already installed)" -ForegroundColor Green
+    }
+    elseif ($LASTEXITCODE -ne 0) {
         Write-Host "  [FAILED] $($pkg.Name) — winget exited with code $LASTEXITCODE" -ForegroundColor Red
         $Failed += $pkg.Name
     }
