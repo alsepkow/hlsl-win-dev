@@ -11,8 +11,10 @@
 
     Must be run from an elevated (Administrator) PowerShell session.
 
-    After installation completes you may need to restart your terminal (or log
-    out / log back in) for PATH changes to take effect.
+    After installation completes the script refreshes PATH from the registry
+    so that newly-installed tools (e.g. Python) are available immediately for
+    post-install steps such as pip-installing pyyaml.  Other terminal windows
+    may still need to be restarted for PATH changes to take effect.
 
 .EXAMPLE
     # Run from an elevated PowerShell:
@@ -102,6 +104,15 @@ foreach ($pkg in $Packages) {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Refresh PATH from the registry so newly-installed tools are visible
+# ─────────────────────────────────────────────────────────────────────────────
+Write-Host "`nRefreshing PATH from registry..." -ForegroundColor DarkGray
+
+$MachinePath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
+$UserPath    = [System.Environment]::GetEnvironmentVariable("Path", "User")
+$env:Path    = "$MachinePath;$UserPath"
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Post-install: pyyaml (needed by LLVM LIT tests)
 # ─────────────────────────────────────────────────────────────────────────────
 Write-Host "`n--- pyyaml (pip) ---" -ForegroundColor Cyan
@@ -159,7 +170,7 @@ else {
 Write-Host @"
 
 Next steps:
-  1. Restart your terminal so new PATH entries take effect.
+  1. Open a new terminal so PATH entries take effect in other shells.
   2. Run .\hlsl-dev.ps1 check-prereqs to verify everything is ready.
 
 "@ -ForegroundColor White
