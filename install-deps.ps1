@@ -165,6 +165,72 @@ $UserPath    = [System.Environment]::GetEnvironmentVariable("Path", "User")
 $env:Path    = "$MachinePath;$UserPath"
 
 # -----------------------------------------------------------------------------
+# Post-install: Add Git-for-Windows unix tools to the system PATH
+# -----------------------------------------------------------------------------
+# LLVM's lit test runner needs a bash that understands native Windows paths.
+# Git-for-Windows ships compatible bash, grep, sed, diff, etc. under
+# <GitInstall>\usr\bin.  WSL's bash.exe (in System32) does NOT work because
+# it expects /mnt/c/... style paths.  We add the Git usr\bin directory to the
+# machine PATH (if not already present) so that the correct bash is found
+# *before* any WSL bash.
+Write-Host "`n--- Git for Windows Unix tools (bash, grep, sed, diff) ---" -ForegroundColor Cyan
+
+$GitBashDir = $null
+
+# Strategy 1: locate via the GitForWindows registry key (most reliable).
+$regPaths = @(
+    "HKLM:\SOFTWARE\GitForWindows",
+    "HKLM:\SOFTWARE\WOW6432Node\GitForWindows",
+    "HKCU:\SOFTWARE\GitForWindows"
+)
+foreach ($rp in $regPaths) {
+    if (Test-Path $rp) {
+        $candidate = (Get-ItemProperty $rp).InstallPath
+        if ($candidate -and (Test-Path (Join-Path $candidate "usr\bin\bash.exe"))) {
+            $GitBashDir = Join-Path $candidate "usr\bin"
+            break
+        }
+    }
+}
+
+# Strategy 2: derive from git.exe location (e.g. C:\Program Files\Git\cmd\git.exe).
+if (-not $GitBashDir) {
+    $gitCmd = Get-Command git -ErrorAction SilentlyContinue
+    if ($gitCmd) {
+        $gitRoot = Split-Path -Parent (Split-Path -Parent $gitCmd.Source)
+        $candidate = Join-Path $gitRoot "usr\bin\bash.exe"
+        if (Test-Path $candidate) {
+            $GitBashDir = Join-Path $gitRoot "usr\bin"
+        }
+    }
+}
+
+if ($GitBashDir) {
+    # Check whether the directory is already on the machine PATH.
+    $machPath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
+    $normalizedEntries = $machPath -split ";" | ForEach-Object { $_.TrimEnd("\").ToLowerInvariant() }
+    $normalizedGitBash = $GitBashDir.TrimEnd("\").ToLowerInvariant()
+
+    if ($normalizedEntries -contains $normalizedGitBash) {
+        Write-Host "  [OK] $GitBashDir already on system PATH" -ForegroundColor Green
+    }
+    else {
+        # Prepend so it is found before any WSL bash in System32.
+        $newMachPath = "$GitBashDir;$machPath"
+        [System.Environment]::SetEnvironmentVariable("Path", $newMachPath, "Machine")
+        Write-Host "  [OK] Added $GitBashDir to system PATH (before System32)" -ForegroundColor Green
+    }
+
+    # Also update the current session's PATH so later steps see it.
+    $env:Path = "$GitBashDir;$env:Path"
+}
+else {
+    Write-Host "  [FAILED] Could not locate Git for Windows bash." -ForegroundColor Red
+    Write-Host "           Install Git first (winget install Microsoft.Git) and re-run this script." -ForegroundColor Red
+    $Failed += "Git Bash (unix tools)"
+}
+
+# -----------------------------------------------------------------------------
 # Post-install: pyyaml (needed by LLVM LIT tests)
 # -----------------------------------------------------------------------------
 Write-Host "`n--- pyyaml (pip) ---" -ForegroundColor Cyan

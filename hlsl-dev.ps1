@@ -85,6 +85,65 @@ $OffloadTestDir   = Join-Path $ScriptDir "offload-test-suite"
 $GoldenImagesDir  = Join-Path $ScriptDir "offload-golden-images"
 
 # -----------------------------------------------------------------------------
+# Git-for-Windows Bash / Unix Tools
+# -----------------------------------------------------------------------------
+# LLVM's lit test runner requires a bash that understands native Windows paths.
+# WSL's bash.exe (in System32) does NOT work.  This function locates the Git
+# for Windows usr\bin directory (which contains bash, grep, sed, diff, etc.)
+# and prepends it to the *process* PATH so it is found before any WSL bash.
+function Initialize-GitBashPath {
+    # Already have a Windows-path-compatible bash?
+    $existing = Get-Command bash -ErrorAction SilentlyContinue
+    if ($existing) {
+        $bashDir = Split-Path -Parent $existing.Source
+        # Reject WSL bash (lives under System32 or WindowsApps).
+        $sys32  = [System.Environment]::GetFolderPath("System").ToLowerInvariant()
+        $winApps = (Join-Path $env:LOCALAPPDATA "Microsoft\WindowsApps").ToLowerInvariant()
+        $bashDirLower = $bashDir.ToLowerInvariant()
+        if ($bashDirLower -ne $sys32 -and -not $bashDirLower.StartsWith($winApps)) {
+            return  # Good bash already on PATH -- nothing to do.
+        }
+    }
+
+    $gitBashDir = $null
+
+    # Strategy 1: GitForWindows registry key.
+    foreach ($hive in @("HKLM", "HKCU")) {
+        foreach ($subKey in @("SOFTWARE\GitForWindows", "SOFTWARE\WOW6432Node\GitForWindows")) {
+            $regPath = "${hive}:\${subKey}"
+            if (Test-Path $regPath) {
+                $installPath = (Get-ItemProperty $regPath -ErrorAction SilentlyContinue).InstallPath
+                if ($installPath -and (Test-Path (Join-Path $installPath "usr\bin\bash.exe"))) {
+                    $gitBashDir = Join-Path $installPath "usr\bin"
+                    break
+                }
+            }
+        }
+        if ($gitBashDir) { break }
+    }
+
+    # Strategy 2: derive from git.exe on PATH.
+    if (-not $gitBashDir) {
+        $gitCmd = Get-Command git -ErrorAction SilentlyContinue
+        if ($gitCmd) {
+            $gitRoot = Split-Path -Parent (Split-Path -Parent $gitCmd.Source)
+            $candidate = Join-Path $gitRoot "usr\bin\bash.exe"
+            if (Test-Path $candidate) {
+                $gitBashDir = Join-Path $gitRoot "usr\bin"
+            }
+        }
+    }
+
+    if ($gitBashDir) {
+        $env:Path = "$gitBashDir;$env:Path"
+    }
+}
+
+# Run early so every command in this script (configure, build, check-prereqs)
+# sees the correct bash.
+Initialize-GitBashPath
+
+# -----------------------------------------------------------------------------
 # Generator Mapping
 # -----------------------------------------------------------------------------
 function Get-CMakeGenerator {
@@ -296,6 +355,28 @@ function Test-Prerequisites {
     }
     else {
         Write-Host "  [MISSING] git - install from https://git-scm.com/downloads" -ForegroundColor Red
+        $allGood = $false
+    }
+
+    # Bash (Windows-path-compatible -- needed by LLVM lit tests)
+    $bash = Get-Command bash -ErrorAction SilentlyContinue
+    if ($bash) {
+        # Validate that this bash understands native Windows paths.
+        # WSL's bash.exe lives in System32 and requires /mnt/c/... paths.
+        $bashExe = $bash.Source
+        $testResult = & $bashExe -c "[[ -f `"$($bashExe.Replace('\','\\'))`" ]]" 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "  [OK] bash ($bashExe)" -ForegroundColor Green
+        }
+        else {
+            Write-Host "  [BAD] bash found at $bashExe but it cannot handle Windows paths (WSL?)" -ForegroundColor Red
+            Write-Host "        Re-run install-deps.ps1 to add Git-for-Windows bash to PATH" -ForegroundColor Red
+            $allGood = $false
+        }
+    }
+    else {
+        Write-Host "  [MISSING] bash (Windows-path-compatible) - needed by LLVM lit tests" -ForegroundColor Red
+        Write-Host "            Re-run install-deps.ps1 or install Git for Windows" -ForegroundColor Red
         $allGood = $false
     }
 
