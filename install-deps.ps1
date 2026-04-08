@@ -133,13 +133,18 @@ else {
 foreach ($pkg in $Packages) {
     Write-Host "`n--- $($pkg.Name) ($($pkg.Id)) ---" -ForegroundColor Cyan
 
+    # Check if the package is already installed before attempting install.
+    # Some installers (e.g. Vulkan SDK) return non-zero when the same version
+    # is already present, which winget reports as a failure.
+    & winget list --id $pkg.Id --exact --accept-source-agreements 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "  [OK] $($pkg.Name) (already installed)" -ForegroundColor Green
+        continue
+    }
+
     & winget install --id $pkg.Id --scope machine --accept-source-agreements --accept-package-agreements
 
-    # Exit code -1978335189 (0x8A15002B) = no upgrade available / already installed
-    if ($LASTEXITCODE -eq -1978335189) {
-        Write-Host "  [OK] $($pkg.Name) (already installed)" -ForegroundColor Green
-    }
-    elseif ($LASTEXITCODE -ne 0) {
+    if ($LASTEXITCODE -ne 0) {
         Write-Host "  [FAILED] $($pkg.Name) — winget exited with code $LASTEXITCODE" -ForegroundColor Red
         $Failed += $pkg.Name
     }
