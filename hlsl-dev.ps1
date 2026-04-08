@@ -101,6 +101,86 @@ function Test-IsMultiConfigGenerator {
 }
 
 # -----------------------------------------------------------------------------
+# MSVC x64 Environment Bootstrapping
+# -----------------------------------------------------------------------------
+function Initialize-VCEnvironment {
+    <#
+    .SYNOPSIS
+        Ensures the MSVC x64 toolchain is on PATH. When the current Developer
+        Command Prompt targets x86 (or no VS environment is loaded at all),
+        this function sources vcvarsall.bat for the amd64 host/target so that
+        cl.exe, link.exe, and the Windows SDK libraries all resolve to their
+        x64 variants.
+
+        For Visual Studio generators this is unnecessary because CMake selects
+        the platform through -A, but for single-config generators like Ninja
+        the environment must match the desired target architecture.
+    #>
+
+    # Nothing to do for multi-config (VS) generators -- CMake handles arch.
+    if (Test-IsMultiConfigGenerator) { return }
+
+    # If the user chose clang-cl, the MSVC linker environment is still needed
+    # but the detection below (looking for cl.exe) works because the VS
+    # Developer Command Prompt always puts cl.exe on PATH too.
+
+    # Quick check: is the current cl.exe already targeting x64?
+    $cl = Get-Command cl -ErrorAction SilentlyContinue
+    if ($cl) {
+        $clOutput = (cmd /c "`"$($cl.Source)`" 2>&1")
+        $clBanner = $clOutput -join " "
+        if ($clBanner -match 'for (x64|AMD64)') {
+            # Already in an x64 environment -- nothing to do.
+            return
+        }
+    }
+
+    # Locate vcvarsall.bat through vswhere
+    $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+    if (-not (Test-Path $vswhere)) {
+        if (-not $cl) {
+            throw "cl.exe not found and vswhere is not installed. Run from a Visual Studio x64 Developer PowerShell."
+        }
+        Write-Host "  [env] Warning: vswhere not found; using current (non-x64) environment as-is." -ForegroundColor Yellow
+        return
+    }
+
+    $vsInstallPath = & $vswhere -latest -products * `
+        -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+        -property installationPath
+    if (-not $vsInstallPath) {
+        if (-not $cl) {
+            throw "No Visual Studio installation with C++ tools found."
+        }
+        Write-Host "  [env] Warning: could not find a VS install with C++ tools; using current environment." -ForegroundColor Yellow
+        return
+    }
+
+    $vcvarsall = Join-Path $vsInstallPath "VC\Auxiliary\Build\vcvarsall.bat"
+    if (-not (Test-Path $vcvarsall)) {
+        Write-Host "  [env] Warning: vcvarsall.bat not found at expected path; using current environment." -ForegroundColor Yellow
+        return
+    }
+
+    Write-Host "  [env] Current toolchain is not x64 -- sourcing vcvarsall.bat amd64 ..." -ForegroundColor Yellow
+
+    # Run vcvarsall in a child cmd, then dump the resulting environment so we
+    # can import it into this PowerShell session.
+    $envDump = & cmd.exe /c "`"$vcvarsall`" amd64 >nul 2>&1 && set" 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw "vcvarsall.bat amd64 failed (exit code $LASTEXITCODE)."
+    }
+
+    foreach ($line in $envDump) {
+        if ($line -match '^([^=]+)=(.*)$') {
+            [System.Environment]::SetEnvironmentVariable($Matches[1], $Matches[2], "Process")
+        }
+    }
+
+    Write-Host "  [env] x64 MSVC environment loaded." -ForegroundColor Green
+}
+
+# -----------------------------------------------------------------------------
 # Compiler Selection
 # -----------------------------------------------------------------------------
 function Get-CompilerCMakeFlags {
@@ -109,6 +189,10 @@ function Get-CompilerCMakeFlags {
         Returns CMake flags for CMAKE_C_COMPILER and CMAKE_CXX_COMPILER
         based on the -Compiler parameter (clang-cl or cl).
     #>
+
+    # Ensure the x64 MSVC environment is active before resolving the compiler.
+    Initialize-VCEnvironment
+
     switch ($Compiler) {
         "clang-cl" {
             $clangCl = Get-Command clang-cl -ErrorAction SilentlyContinue
