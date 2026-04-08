@@ -26,6 +26,10 @@
     CMake generator. Defaults to Ninja.
     Valid: Ninja, VS2026, VS2022, VS2019
 
+.PARAMETER Compiler
+    C/C++ compiler to use. Defaults to clang-cl.
+    Valid: clang-cl, cl
+
 .PARAMETER Repo
     Submodule name for fetch-history / truncate-history commands.
 
@@ -37,6 +41,7 @@
     .\hlsl-dev.ps1 configure-llvm -BuildType Debug
     .\hlsl-dev.ps1 build-llvm -Target check-hlsl
     .\hlsl-dev.ps1 build-dxc -Generator VS2026
+    .\hlsl-dev.ps1 configure-llvm -Compiler cl
     .\hlsl-dev.ps1 fetch-history -Repo llvm-project
 #>
 
@@ -59,6 +64,9 @@ param(
 
     [ValidateSet("Ninja", "VS2026", "VS2022", "VS2019")]
     [string]$Generator = "Ninja",
+
+    [ValidateSet("clang-cl", "cl")]
+    [string]$Compiler = "clang-cl",
 
     [ValidateSet("", "llvm-project", "DirectXShaderCompiler", "offload-test-suite", "offload-golden-images")]
     [string]$Repo = ""
@@ -93,9 +101,44 @@ function Test-IsMultiConfigGenerator {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Compiler Selection
+# ─────────────────────────────────────────────────────────────────────────────
+function Get-CompilerCMakeFlags {
+    <#
+    .SYNOPSIS
+        Returns CMake flags for CMAKE_C_COMPILER and CMAKE_CXX_COMPILER
+        based on the -Compiler parameter (clang-cl or cl).
+    #>
+    switch ($Compiler) {
+        "clang-cl" {
+            $clangCl = Get-Command clang-cl -ErrorAction SilentlyContinue
+            if (-not $clangCl) {
+                throw "clang-cl not found on PATH. Install LLVM/Clang (winget install LLVM.LLVM) or switch to -Compiler cl."
+            }
+            $compilerPath = $clangCl.Source
+            Write-Host "  [compiler] Using clang-cl ($compilerPath)" -ForegroundColor Green
+            return @(
+                "-DCMAKE_C_COMPILER=$compilerPath",
+                "-DCMAKE_CXX_COMPILER=$compilerPath"
+            )
+        }
+        "cl" {
+            $cl = Get-Command cl -ErrorAction SilentlyContinue
+            if (-not $cl) {
+                throw "cl.exe not found on PATH. Run from a Visual Studio Developer PowerShell or set up vcvarsall.bat."
+            }
+            $compilerPath = $cl.Source
+            Write-Host "  [compiler] Using cl ($compilerPath)" -ForegroundColor Green
+            return @(
+                "-DCMAKE_C_COMPILER=$compilerPath",
+                "-DCMAKE_CXX_COMPILER=$compilerPath"
+            )
+        }
+    }
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 # CMake Flag Definitions
-#   Mirrors $LLVMCMakeFlags and $DXCCMakeFlags from flake.nix,
-#   adapted for Windows (no lld, no sccache by default).
 # ─────────────────────────────────────────────────────────────────────────────
 function Get-LLVMCMakeFlags {
     $flags = @(
@@ -104,7 +147,7 @@ function Get-LLVMCMakeFlags {
         "-DLLVM_OPTIMIZED_TABLEGEN=OFF",
         "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
 
-        # Offload Test Suite & DXC Integration (same as flake.nix)
+        # Offload Test Suite & DXC Integration
         "-DLLVM_EXTERNAL_PROJECTS=OffloadTest",
         "-DLLVM_EXTERNAL_OFFLOADTEST_SOURCE_DIR=$OffloadTestDir",
         "-DGOLDENIMAGE_DIR=$GoldenImagesDir",
@@ -414,7 +457,7 @@ function Invoke-ConfigureLLVM {
         return
     }
 
-    Write-Host "`n=== Configuring LLVM ($BuildType, $(Get-CMakeGenerator)) ===" -ForegroundColor Cyan
+    Write-Host "`n=== Configuring LLVM ($BuildType, $(Get-CMakeGenerator), $Compiler) ===" -ForegroundColor Cyan
 
     $cmakeArgs = @(
         "-S", $sourceDir,
@@ -426,6 +469,7 @@ function Invoke-ConfigureLLVM {
         $cmakeArgs += "-DCMAKE_BUILD_TYPE=$BuildType"
     }
 
+    $cmakeArgs += Get-CompilerCMakeFlags
     $cmakeArgs += Get-LLVMCMakeFlags
 
     Write-Host "  cmake $($cmakeArgs -join ' ')" -ForegroundColor DarkGray
@@ -473,7 +517,7 @@ function Invoke-ConfigureDXC {
 
     $buildDir = Join-Path $DXCDir "build"
 
-    Write-Host "`n=== Configuring DXC ($BuildType, $(Get-CMakeGenerator)) ===" -ForegroundColor Cyan
+    Write-Host "`n=== Configuring DXC ($BuildType, $(Get-CMakeGenerator), $Compiler) ===" -ForegroundColor Cyan
 
     $cmakeArgs = @(
         "-S", $DXCDir,
@@ -485,6 +529,7 @@ function Invoke-ConfigureDXC {
         $cmakeArgs += "-DCMAKE_BUILD_TYPE=$BuildType"
     }
 
+    $cmakeArgs += Get-CompilerCMakeFlags
     $cmakeArgs += Get-DXCCMakeFlags
 
     Write-Host "  cmake $($cmakeArgs -join ' ')" -ForegroundColor DarkGray
@@ -546,6 +591,7 @@ Commands:
 Parameters:
   -BuildType          Debug | Release | RelWithDebInfo (default) | MinSizeRel
   -Generator          Ninja (default) | VS2026 | VS2022 | VS2019
+  -Compiler           clang-cl (default) | cl
   -Target             Specific build target (e.g., clang, dxc, check-all)
   -Repo               Submodule name (for fetch-history / truncate-history)
 
@@ -557,6 +603,7 @@ Examples:
   .\hlsl-dev.ps1 configure-llvm -BuildType Debug
   .\hlsl-dev.ps1 build-llvm -Target check-hlsl
   .\hlsl-dev.ps1 build-dxc -Generator VS2026
+  .\hlsl-dev.ps1 configure-llvm -Compiler cl
   .\hlsl-dev.ps1 fetch-history -Repo llvm-project
   .\hlsl-dev.ps1 truncate-history -Repo DirectXShaderCompiler
 
