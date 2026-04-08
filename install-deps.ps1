@@ -54,8 +54,9 @@ $VSComponents = @(
 $Packages = @(
     @{ Id = "Microsoft.Git";                        Name = "Git" },
     @{ Id = "KhronosGroup.VulkanSDK";               Name = "Vulkan SDK" },
-    @{ Id = "Python.Python.3.14";                    Name = "Python 3.14" },
-    @{ Id = "Mozilla.sccache";                       Name = "sccache" }
+    @{ Id = "Python.Python.3.14";                   Name = "Python 3.14" },
+    @{ Id = "Mozilla.sccache";                      Name = "sccache" },
+    @{ Id = "Microsoft.WindowsWDK.10.0.26100";      Name = "Windows Driver Kit - Windows 10.0.26100.6584" }
 )
 
 # -----------------------------------------------------------------------------
