@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+#Requires -Version 5.1
 <#
 .SYNOPSIS
     HLSL Developer Environment for Windows - mirrors the Nix-based hlsl-dev setup.

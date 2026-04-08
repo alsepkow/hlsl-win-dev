@@ -1,12 +1,12 @@
 # HLSL Developer Environment (Windows)
 
-Windows equivalent of [hlsl-dev](https://github.com/Icohedron/hlsl-dev) -- a self-contained developer environment for working on LLVM's HLSL features and Microsoft's DirectXShaderCompiler (DXC).
+Windows counterpart to [hlsl-dev](https://github.com/Icohedron/hlsl-dev) -- a developer environment for working on LLVM's HLSL features and Microsoft's DirectXShaderCompiler (DXC). Uses PowerShell and Visual Studio instead of Nix.
 
-Uses PowerShell and Visual Studio instead of Nix.
+Unlike hlsl-dev, Windows has no Nix equivalent, so this repo cannot offer the same reproducibility guarantees. It relies on system-installed toolchains managed by Visual Studio and winget.
 
 ## Prerequisites
 
-- **PowerShell 7** (`winget install Microsoft.PowerShell`) -- the scripts require PowerShell 7 and are not compatible with Windows PowerShell 5.1. This must be installed manually before running `install-deps.ps1`.
+- **PowerShell 5.1+** -- ships with Windows 10/11. PowerShell 7 also works but is not required.
   - Your execution policy must allow running scripts. If it doesn't, set it with:
     ```powershell
     Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
@@ -25,7 +25,7 @@ Uses PowerShell and Visual Studio instead of Nix.
 Optional:
 - **sccache** (`winget install Mozilla.sccache`) -- compiler caching for faster rebuilds
 
-You can install everything except PowerShell 7 automatically by running `.\install-deps.ps1` in an **administrator** PowerShell 7 session.
+You can install everything automatically by running `.\install-deps.ps1` in an **administrator** PowerShell session.
 
 Run `.\hlsl-dev.ps1 check-prereqs` to verify your setup.
 
