@@ -245,6 +245,10 @@ function Get-LLVMCMakeFlags {
         $sccachePath = $sccache.Source
         $flags += "-DCMAKE_C_COMPILER_LAUNCHER=$sccachePath"
         $flags += "-DCMAKE_CXX_COMPILER_LAUNCHER=$sccachePath"
+        # sccache wraps cl.exe in a way that breaks PDB file locking (/Zi
+        # writes to a shared .pdb per library).  Switch to /Z7 (Embedded)
+        # which stores debug info in each .obj, avoiding the contention.
+        $flags += "-DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded"
         Write-Host "  [sccache] Found at $sccachePath - enabling compiler caching" -ForegroundColor Green
     }
     else {
