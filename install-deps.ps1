@@ -70,21 +70,60 @@ $Failed = @()
 # ─────────────────────────────────────────────────────────────────────────────
 Write-Host "`n--- Visual Studio 2026 Community (with workloads) ---" -ForegroundColor Cyan
 
-$vsOverride = ($VSComponents | ForEach-Object { "--add $_" }) -join " "
-$vsOverride += " --passive"
+# Step 1: Ensure VS Community is installed (no component overrides — let
+#          winget handle the base install cleanly).
+$vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+$vsSetup = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\setup.exe"
 
-Write-Host "  Components: $($VSComponents -join ', ')" -ForegroundColor DarkGray
-Write-Host "  winget install --id Microsoft.VisualStudio.Community --scope machine --override `"$vsOverride`"" -ForegroundColor DarkGray
+$vsInstallPath = $null
+if (Test-Path $vswhere) {
+    $vsInstallPath = & $vswhere -latest -products * -property installationPath
+}
 
-& winget install --id Microsoft.VisualStudio.Community --scope machine `
-    --accept-source-agreements --accept-package-agreements `
-    --override "$vsOverride"
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "  [FAILED] Visual Studio 2026 Community — winget exited with code $LASTEXITCODE" -ForegroundColor Red
+if (-not $vsInstallPath) {
+    Write-Host "  Installing Visual Studio 2026 Community..." -ForegroundColor DarkGray
+    & winget install --id Microsoft.VisualStudio.Community --scope machine `
+        --accept-source-agreements --accept-package-agreements
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "  [FAILED] Visual Studio 2026 Community — winget exited with code $LASTEXITCODE" -ForegroundColor Red
+        $Failed += "Visual Studio 2026 Community"
+    }
+
+    # Re-detect after install
+    if (Test-Path $vswhere) {
+        $vsInstallPath = & $vswhere -latest -products * -property installationPath
+    }
+}
+
+# Step 2: Add required workloads and components via the VS Installer.
+if ($vsInstallPath -and (Test-Path $vsSetup)) {
+    Write-Host "  Adding components to $vsInstallPath ..." -ForegroundColor DarkGray
+    Write-Host "  Components: $($VSComponents -join ', ')" -ForegroundColor DarkGray
+
+    $modifyArgs = @("modify", "--installPath", $vsInstallPath)
+    foreach ($comp in $VSComponents) {
+        $modifyArgs += "--add"
+        $modifyArgs += $comp
+    }
+    $modifyArgs += "--passive"
+
+    Write-Host "  $vsSetup $($modifyArgs -join ' ')" -ForegroundColor DarkGray
+    & $vsSetup @modifyArgs
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "  [FAILED] VS Installer modify exited with code $LASTEXITCODE" -ForegroundColor Red
+        $Failed += "Visual Studio 2026 Community (components)"
+    }
+    else {
+        Write-Host "  [OK] Visual Studio 2026 Community" -ForegroundColor Green
+    }
+}
+elseif (-not $vsInstallPath) {
+    Write-Host "  [FAILED] Visual Studio not found after install attempt" -ForegroundColor Red
     $Failed += "Visual Studio 2026 Community"
 }
 else {
-    Write-Host "  [OK] Visual Studio 2026 Community" -ForegroundColor Green
+    Write-Host "  [FAILED] VS Installer (setup.exe) not found — cannot add components" -ForegroundColor Red
+    $Failed += "Visual Studio 2026 Community (components)"
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
