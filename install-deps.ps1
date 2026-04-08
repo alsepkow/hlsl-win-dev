@@ -78,7 +78,7 @@ Write-Host "  winget install --id Microsoft.VisualStudio.Community --scope machi
 
 & winget install --id Microsoft.VisualStudio.Community --scope machine `
     --accept-source-agreements --accept-package-agreements `
-    --override $vsOverride
+    --override "$vsOverride"
 if ($LASTEXITCODE -ne 0) {
     Write-Host "  [FAILED] Visual Studio 2026 Community — winget exited with code $LASTEXITCODE" -ForegroundColor Red
     $Failed += "Visual Studio 2026 Community"
