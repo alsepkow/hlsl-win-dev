@@ -13,14 +13,17 @@ Unlike hlsl-dev, Windows has no Nix equivalent, so this repo cannot offer the sa
     ```
 - **Visual Studio 2026** (or 2022/2019) with the following workloads and components:
   - Desktop Development with C++ (`Microsoft.VisualStudio.Workload.NativeDesktop`)
+  - MSVC x86/x64 build tools (`Microsoft.VisualStudio.Component.VC.Tools.x86.x64`)
   - C++ CMake tools for Windows (`Microsoft.VisualStudio.Component.VC.CMake.Project`) -- provides CMake and Ninja
   - C++ Clang tools for Windows (`Microsoft.VisualStudio.Component.VC.Llvm.Clang`) -- provides clang-cl
   - C++ Clang-cl MSBuild toolset (`Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset`)
+  - C++ ATL for latest build tools (`Microsoft.VisualStudio.Component.VC.ATL`)
   - Windows 11 SDK 10.0.26100 (`Microsoft.VisualStudio.Component.Windows11SDK.26100`)
   - Windows Driver Kit (`Component.Microsoft.Windows.DriverKit`) -- includes TAEF for DXC tests
 - **Python 3.x** (`pip install pyyaml` for LIT tests)
-- **Git**
+- **Git** -- Git-for-Windows' unix tools (`usr\bin`: bash, grep, sed, diff, etc.) must be on PATH for LLVM LIT tests. `install-deps.ps1` configures this automatically.
 - **Vulkan SDK** (<https://vulkan.lunarg.com/sdk/home>)
+- **Graphics Tools** -- Windows optional feature providing the D3D12 debug layer. `install-deps.ps1` enables this automatically, or install via Settings > System > Optional Features > Graphics Tools.
 
 Optional:
 - **sccache** (`winget install Mozilla.sccache`) -- compiler caching for faster rebuilds

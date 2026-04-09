@@ -335,6 +335,7 @@ $RequiredVSComponents = @(
     @{ Id = "Microsoft.VisualStudio.Component.VC.CMake.Project";    Name = "C++ CMake tools for Windows" },
     @{ Id = "Microsoft.VisualStudio.Component.VC.Llvm.Clang";      Name = "C++ Clang tools for Windows" },
     @{ Id = "Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset"; Name = "C++ Clang-cl MSBuild toolset" },
+    @{ Id = "Microsoft.VisualStudio.Component.VC.ATL";              Name = "C++ ATL for latest build tools" },
     @{ Id = "Microsoft.VisualStudio.Component.Windows11SDK.26100";  Name = "Windows 11 SDK (10.0.26100)" },
     @{ Id = "Component.Microsoft.Windows.DriverKit";                Name = "Windows Driver Kit" }
 )
