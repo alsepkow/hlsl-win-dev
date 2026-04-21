@@ -295,7 +295,15 @@ function Get-LLVMCMakeFlags {
         "-DLLVM_EXTERNAL_OFFLOADTEST_SOURCE_DIR=$OffloadTestDir",
         "-DGOLDENIMAGE_DIR=$GoldenImagesDir",
         "-DOFFLOADTEST_TEST_CLANG=ON",
-        "-DDXC_DIR=$(Join-Path $DXCDir 'build\bin')"
+        "-DDXC_DIR=$(Join-Path $DXCDir 'build\bin')",
+
+        # Embed debug info into each .obj (/Z7) instead of writing it to a
+        # shared per-target PDB (/Zi). This avoids MSVC's LNK1140
+        # "limit exceeded for program database" error when linking very large
+        # binaries like clang.exe and AllClangUnitTests.exe, because no merged
+        # PDB is produced at link time. Side benefits: /Z7 is also required
+        # for sccache to cache MSVC builds (avoids .pdb file-lock contention).
+        "-DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded"
     )
 
     # Use sccache if available
@@ -304,10 +312,9 @@ function Get-LLVMCMakeFlags {
         $sccachePath = $sccache.Source
         $flags += "-DCMAKE_C_COMPILER_LAUNCHER=$sccachePath"
         $flags += "-DCMAKE_CXX_COMPILER_LAUNCHER=$sccachePath"
-        # sccache wraps cl.exe in a way that breaks PDB file locking (/Zi
-        # writes to a shared .pdb per library).  Switch to /Z7 (Embedded)
-        # which stores debug info in each .obj, avoiding the contention.
-        $flags += "-DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded"
+        # Note: CMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded is already set
+        # unconditionally above, which is also what sccache needs to work
+        # with cl.exe (/Zi writes to a shared .pdb and breaks file locking).
         Write-Host "  [sccache] Found at $sccachePath - enabling compiler caching" -ForegroundColor Green
     }
     else {
