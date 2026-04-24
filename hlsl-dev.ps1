@@ -13,7 +13,8 @@
 .PARAMETER Command
     The task to run. One of:
         check-prereqs, setup, configure-llvm, build-llvm, configure-dxc,
-        build-dxc, fetch-history, truncate-history, update-submodules, help
+        build-dxc, fetch-history, truncate-history, update-submodules,
+        sync-upstream, help
 
 .PARAMETER BuildType
     CMake build type. Defaults to RelWithDebInfo.
@@ -31,7 +32,7 @@
     Valid: clang-cl, cl
 
 .PARAMETER Repo
-    Submodule name for fetch-history / truncate-history commands.
+    Submodule name for fetch-history / truncate-history / sync-upstream commands.
 
 .EXAMPLE
     .\hlsl-dev.ps1 check-prereqs
@@ -43,6 +44,8 @@
     .\hlsl-dev.ps1 build-dxc -Generator VS2026
     .\hlsl-dev.ps1 configure-llvm -Compiler cl
     .\hlsl-dev.ps1 fetch-history -Repo llvm-project
+    .\hlsl-dev.ps1 sync-upstream
+    .\hlsl-dev.ps1 sync-upstream -Repo DirectXShaderCompiler
 #>
 
 [CmdletBinding()]
@@ -53,7 +56,7 @@ param(
         "configure-llvm", "build-llvm",
         "configure-dxc", "build-dxc",
         "fetch-history", "truncate-history", "update-submodules",
-        "help"
+        "sync-upstream", "help"
     )]
     [string]$Command = "help",
 
@@ -555,6 +558,56 @@ function Invoke-UpdateSubmodules {
     }
 }
 
+function Invoke-SyncUpstream {
+    param([string]$RepoName)
+
+    # Determine which submodules to sync
+    $submodules = if ($RepoName) { @($RepoName) } else {
+        @("llvm-project", "DirectXShaderCompiler", "offload-test-suite", "offload-golden-images")
+    }
+
+    foreach ($sub in $submodules) {
+        $repoPath = Join-Path $ScriptDir $sub
+        if (-not (Test-Path $repoPath)) {
+            Write-Host "Skipping '$sub': directory not found at $repoPath" -ForegroundColor Yellow
+            continue
+        }
+
+        Push-Location $repoPath
+        try {
+            # Check that an upstream remote exists
+            $remotes = & git remote
+            if ($remotes -notcontains "upstream") {
+                Write-Host "Skipping '$sub': no 'upstream' remote configured" -ForegroundColor Yellow
+                continue
+            }
+
+            Write-Host "`n=== Syncing $sub with upstream/main ===" -ForegroundColor Cyan
+
+            & git fetch upstream main --depth 2
+            if ($LASTEXITCODE -ne 0) { throw "git fetch upstream failed for $sub" }
+
+            & git checkout main 2>$null
+            if ($LASTEXITCODE -ne 0) {
+                # Detached HEAD — create a local main tracking branch
+                & git checkout -b main upstream/main
+                if ($LASTEXITCODE -ne 0) { throw "git checkout -b main failed for $sub" }
+            }
+
+            & git merge upstream/main --ff-only
+            if ($LASTEXITCODE -ne 0) { throw "Fast-forward merge failed for $sub. Local main may have diverged from upstream." }
+
+            Write-Host "$sub synced to upstream/main." -ForegroundColor Green
+        }
+        catch {
+            Write-Host "Error syncing $sub`: $_" -ForegroundColor Red
+        }
+        finally {
+            Pop-Location
+        }
+    }
+}
+
 function Invoke-FetchHistory {
     param([string]$RepoName)
     if (-not $RepoName) {
@@ -753,6 +806,7 @@ Commands:
   fetch-history       Fetch full git history for a submodule
   truncate-history    Truncate submodule history back to depth 2
   update-submodules   Update all submodules to latest upstream
+  sync-upstream       Sync submodule(s) with upstream/main (use -Repo to target one)
   help                Show this help message
 
 Parameters:
@@ -760,7 +814,7 @@ Parameters:
   -Generator          Ninja (default) | VS2026 | VS2022 | VS2019
   -Compiler           cl (default) | clang-cl
   -Target             Specific build target (e.g., clang, dxc, check-all)
-  -Repo               Submodule name (for fetch-history / truncate-history)
+  -Repo               Submodule name (for fetch-history / truncate-history / sync-upstream)
 
 Examples:
   .\hlsl-dev.ps1 check-prereqs
@@ -802,5 +856,6 @@ switch ($Command) {
     "fetch-history"     { Invoke-FetchHistory -RepoName $Repo }
     "truncate-history"  { Invoke-TruncateHistory -RepoName $Repo }
     "update-submodules" { Invoke-UpdateSubmodules }
+    "sync-upstream"     { Invoke-SyncUpstream -RepoName $Repo }
     "help"              { Show-Help }
 }
