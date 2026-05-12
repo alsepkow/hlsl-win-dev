@@ -63,6 +63,7 @@ Run `.\hlsl-dev.ps1 check-prereqs` to verify your setup.
 | `fetch-history` | Fetch full git history for a submodule |
 | `truncate-history` | Truncate submodule history to depth 2 |
 | `update-submodules` | Update all submodules to latest upstream |
+| `sync-upstream` | Sync submodule(s) with `upstream/main` (use `-Repo` to target one) |
 
 ## Parameters
 
@@ -71,7 +72,7 @@ Run `.\hlsl-dev.ps1 check-prereqs` to verify your setup.
 | `-BuildType` | `Debug`, `Release`, `RelWithDebInfo`, `MinSizeRel` | `RelWithDebInfo` |
 | `-Generator` | `Ninja`, `VS2026`, `VS2022`, `VS2019` | `Ninja` |
 | `-Target` | Any CMake target (e.g., `clang`, `dxc`, `check-all`, `check-hlsl`) | (all) |
-| `-Repo` | Submodule name (for `fetch-history`/`truncate-history`) | |
+| `-Repo` | Submodule name (for `fetch-history`/`truncate-history`/`sync-upstream`) | |
 
 ## Examples
 
@@ -98,6 +99,12 @@ Run `.\hlsl-dev.ps1 check-prereqs` to verify your setup.
 
 # Truncate it back to save disk space
 .\hlsl-dev.ps1 truncate-history -Repo llvm-project
+
+# Sync all submodules with upstream/main
+.\hlsl-dev.ps1 sync-upstream
+
+# Sync just DXC with upstream/main
+.\hlsl-dev.ps1 sync-upstream -Repo DirectXShaderCompiler
 ```
 
 ## Ninja vs Visual Studio Generator
