@@ -24,7 +24,6 @@ a.out
 .idea/
 *.suo
 *.user
-AGENTS.md
 
 # Generated
 compile_commands.json
