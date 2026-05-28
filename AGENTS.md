@@ -28,8 +28,7 @@ If you believe a PR action is the obvious next step, **stop and ask first**.
 
 ## What you may do without asking
 
-- `git commit` (including `--amend` on the tip commit you just made) on local
-  branches.
+- `git commit` on local branches.
 - `git push` (non-force, fast-forward) to my fork (`origin`) on branches I
   own. Pushing a branch does not open a PR.
 - `git fetch`, `git pull`, `git rebase`, `git merge` on local branches.
@@ -61,27 +60,38 @@ What this means in practice:
 
 If you've rewritten history and need to push, **stop and ask first**.
 
-## Do not squash commits without explicit approval
+## Do not rewrite history without explicit approval
 
-**Never combine multiple existing commits into one without an explicit
-instruction from me in the current turn.**
+**Never amend, squash, rebase, or otherwise rewrite commit history without
+an explicit instruction from me in the current turn.** This applies to
+every branch, including ones that are still local and haven't been pushed.
 
-This includes, but is not limited to:
+Specifically, you must NOT run any of the following without me asking for
+it, by name, in the message you are currently responding to:
 
-- `git rebase -i` with `squash` / `fixup` / `s` / `f` actions.
+- `git commit --amend` (changing message, adding files, or anything else —
+  even on a commit you just made yourself).
+- `git rebase` in any form (interactive or non-interactive, `-i` with
+  `squash`/`fixup`/`reword`, plain `git rebase <base>`, etc.).
 - `git merge --squash`.
-- `git reset --soft <older-commit>` followed by a new commit (squash via reset).
-- `gh pr merge --squash`.
-- `git commit --amend` when the commit being amended is **not** one you
-  authored earlier in the current session — amending someone else's prior
-  commit collapses their work into yours.
-- Any other workflow that rewrites two or more commits into fewer commits.
+- `git reset --soft <older-commit>` / `git reset --hard <older-commit>`
+  followed by re-committing (squash or rewrite via reset).
+- `gh pr merge --squash` / `gh pr merge --rebase`.
+- Any other workflow that alters existing commit objects or collapses
+  multiple commits into fewer.
 
-Amending the tip commit you just created in the current session (e.g. to fix
-a typo in the message or add a missed file before pushing) is fine and does
-**not** require approval — that's a single-commit edit, not a squash.
+The reasoning is the same as for force-push and PR edits: history rewrites
+disrupt anyone reviewing or building on top of the branch, and they often
+imply a follow-up force-push. If you think amending, squashing, or
+rebasing would improve the history, **stop and ask first**.
 
-If you think squashing would improve the history, **stop and ask first**.
+Acceptable phrasings to request approval:
+
+> "Want me to amend the tip commit to fix the typo and force-push?"
+> "Want me to squash these 3 commits into one before pushing?"
+> "OK to rebase this branch onto the latest upstream/main?"
+
+Wait for an explicit yes before doing it.
 
 ## Build before pushing
 
