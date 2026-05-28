@@ -30,11 +30,36 @@ If you believe a PR action is the obvious next step, **stop and ask first**.
 
 - `git commit` (including `--amend` on the tip commit you just made) on local
   branches.
-- `git push` to my fork (`origin`), including `--force` / `--force-with-lease`
-  on branches I own. Pushing a branch does not open a PR.
+- `git push` (non-force, fast-forward) to my fork (`origin`) on branches I
+  own. Pushing a branch does not open a PR.
 - `git fetch`, `git pull`, `git rebase`, `git merge` on local branches.
 - Read-only `gh` commands: `gh pr view`, `gh pr list`, `gh pr diff`,
   `gh run view`, `gh run list`, `gh api` for GET requests, etc.
+
+## Do not force-push without explicit approval
+
+**Never force-push (`--force` or `--force-with-lease`) without an explicit
+instruction from me in the current turn.** This applies to every branch,
+on every remote, including my own fork.
+
+Force-pushing rewrites history that may already be visible to reviewers
+(via an open PR, a shared link, or someone's local checkout), so it has
+the same disruptive effect as editing a PR out from under reviewers —
+that's why this rule mirrors the "do not open/edit PRs without approval"
+rule above.
+
+What this means in practice:
+
+- A first-time push of a new topic branch is fine (no history to rewrite).
+- A normal fast-forward push that just adds new commits on top of the
+  existing remote tip is fine.
+- Any push that requires `--force` / `--force-with-lease` — after
+  `git commit --amend`, `git rebase`, `git reset`, or any history rewrite
+  — needs an explicit "force-push it" / "amend and push" instruction from
+  me **for that specific push**. A prior approval doesn't carry over to
+  subsequent pushes.
+
+If you've rewritten history and need to push, **stop and ask first**.
 
 ## Do not squash commits without explicit approval
 
@@ -162,8 +187,8 @@ If neither command produces a diff, formatting is clean and you can push.
 - Never push to `upstream` remotes (e.g. `llvm/*`). Only push to `origin`
   (my fork).
 - Never push to `main` / `master` on any remote.
-- Prefer `--force-with-lease` over `--force` when rewriting history on a
-  branch I own.
+- When I do authorize a force-push, prefer `--force-with-lease` over
+  `--force`.
 
 ## Writing style (commits & PR descriptions)
 
