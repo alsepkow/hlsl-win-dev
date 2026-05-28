@@ -165,9 +165,32 @@ If neither command produces a diff, formatting is clean and you can push.
 - Prefer `--force-with-lease` over `--force` when rewriting history on a
   branch I own.
 
-## Commit messages
+## Writing style (commits & PR descriptions)
 
+- Keep commit messages and PR descriptions concise — usually 1–2 sentences
+  in the body. Prefer a broad, high-level overview ("what changed and why,
+  in one breath") over an enumeration of individual details. This applies
+  to **every individual commit**, not just the PR description, because
+  reviewers skim `git log` and need each subject + body to be quick to
+  read. Long explanations of the investigation, alternatives considered,
+  validation steps, etc. belong in the chat, not in the commit or PR. If
+  the reviewer needs more, they can ask.
 - Include the standard trailer on agent-authored commits:
   `Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>`
 - Match the surrounding repo's conventions for subject style (e.g.
   `[component] Short summary` in llvm-project / offload-test-suite).
+
+### AI attribution
+
+When attributing AI assistance in a commit trailer or PR description:
+
+- Use only the model name and version, nothing else.
+  - Good: `Assisted by Claude Opus 4.7`, `Assisted-by: Claude Opus 4.7`
+  - Bad: `Assisted by Claude Opus 4.7 (High reasoning)(Internal only)`,
+    `Assisted by Claude Opus 4.7 (claude-opus-4.7-high)`,
+    `Assisted by Claude Opus 4.7 — model ID claude-opus-4.7-high`
+- Never include internal-only qualifiers, model IDs, reasoning-mode tags,
+  context-window variants, or any other parenthetical decoration.
+- Do **not** add a horizontal rule (`---`) before the attribution line in
+  PR descriptions. Just place the attribution as the final line, separated
+  from the body by a single blank line.
