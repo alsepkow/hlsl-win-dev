@@ -367,6 +367,21 @@ function Test-Prerequisites {
 
     $allGood = $true
 
+    # Source the MSVC environment so VS-bundled tools (cmake, ninja,
+    # clang-cl) are visible on PATH even from a plain PowerShell window.
+    # We bypass Initialize-VCEnvironment's generator guard because check-prereqs
+    # always wants to verify tool availability regardless of generator choice.
+    $savedGenerator = $Generator
+    try {
+        $script:Generator = "Ninja"   # Force past the multi-config early return
+        Initialize-VCEnvironment
+    } catch {
+        # Non-fatal here -- individual tool checks below will report what's
+        # missing. This just means we couldn't auto-discover VS tools.
+    } finally {
+        $script:Generator = $savedGenerator
+    }
+
     # Git
     $git = Get-Command git -ErrorAction SilentlyContinue
     if ($git) {
