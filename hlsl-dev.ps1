@@ -199,8 +199,13 @@ function Initialize-VCEnvironment {
     }
 
     # Quick check: is the current cl.exe already targeting the native arch?
+    # A matching cl.exe banner alone is NOT sufficient: cl.exe can be on PATH
+    # (with the correct native banner) while INCLUDE/LIB/LIBPATH remain unset,
+    # which later fails the build with "cannot open cassert / wrl/client.h /
+    # version.lib". Only treat the environment as ready when the compiler
+    # include/library search paths are also present.
     $cl = Get-Command cl -ErrorAction SilentlyContinue
-    if ($cl) {
+    if ($cl -and $env:INCLUDE -and $env:LIB) {
         $clOutput = (cmd /c "`"$($cl.Source)`" 2>&1")
         $clBanner = $clOutput -join " "
         if ($clBanner -match $nativePattern) {
