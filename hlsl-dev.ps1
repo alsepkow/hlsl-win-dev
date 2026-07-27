@@ -792,6 +792,12 @@ function Invoke-ConfigureLLVM {
 function Invoke-BuildLLVM {
     $buildDir = Join-Path $LLVMDir "build"
 
+    # Ensure the MSVC toolchain env (INCLUDE/LIB/PATH) is active. Configure sets
+    # this up via Get-CompilerCMakeFlags, but a build-only invocation skips
+    # configure when the build dir already exists, so cl.exe would run without
+    # INCLUDE/LIB and fail with "cannot open cstddef/cassert/...". Idempotent.
+    Initialize-VCEnvironment
+
     # Auto-reconfigure if MSVC toolchain changed (e.g. after a VS update)
     Remove-StaleCMakeCache -BuildDir $buildDir -ProjectName "LLVM"
 
@@ -856,6 +862,10 @@ function Invoke-ConfigureDXC {
 
 function Invoke-BuildDXC {
     $buildDir = Join-Path $DXCDir "build"
+
+    # Ensure the MSVC toolchain env is active for build-only invocations that
+    # skip configure (see Invoke-BuildLLVM). Idempotent.
+    Initialize-VCEnvironment
 
     # Auto-reconfigure if MSVC toolchain changed (e.g. after a VS update)
     Remove-StaleCMakeCache -BuildDir $buildDir -ProjectName "DXC"
